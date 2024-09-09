@@ -1,0 +1,44 @@
+.App {
+  font-family: sans-serif;
+  text-align: center;
+}
+
+button {
+  text-transform: capitalize;
+  background: #e5c5f8;
+  outline: none;
+  border: 2px solid #cfb4e1;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+input {
+  width: 40px;
+}
+
+.container {
+  display: flex;
+  align-content: start;
+  flex-direction: column;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: first baseline;
+  gap: 8px;
+}
+
+.video {
+  background: #edcbf0;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.py-4 {
+  padding: 8px 0;
+}
