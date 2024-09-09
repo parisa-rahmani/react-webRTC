@@ -1,5 +1,11 @@
-import "./styles.css";
-import { useState, useRef, VideoHTMLAttributes } from "react";
+import './styles.css';
+import { useState, useRef, VideoHTMLAttributes, RefObject } from 'react';
+import {
+  generateMediaPath,
+  startRecording,
+  stopRecording,
+  shareScreen,
+} from './utils';
 
 type HTMLVideo = VideoHTMLAttributes<HTMLVideoElement> & {
   srcObject?: MediaStream;
@@ -12,8 +18,7 @@ export default function App() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
     null
   );
-  const [recordedBlobls, setRecordedBlobls] = useState([]);
-  console.log({ stream });
+  const [recordedBlobs, setRecordedBlobs] = useState<Blob[]>([]);
 
   const videoRef = useRef<HTMLVideo>(null);
   const recordVideoRef = useRef<HTMLVideo>(null);
@@ -23,8 +28,8 @@ export default function App() {
     const constraints = {
       audio: true,
       video: {
-        width: { max: 1920 },
-        heigth: { min: 1080 },
+        width: { max: 720 },
+        height: { min: 720 },
       },
     };
 
@@ -67,8 +72,8 @@ export default function App() {
     if (!stream?.id) return;
 
     const tracks = stream.getTracks();
-    console.log({ tracks });
-    tracks.forEach((track) => {
+
+    tracks.forEach(track => {
       track.stop();
     });
 
@@ -80,14 +85,14 @@ export default function App() {
   const changeSize = () => {
     if (!stream?.id) return;
 
-    stream.getVideoTracks().forEach((track) => {
+    stream.getVideoTracks().forEach(track => {
       const capabilities = track.getCapabilities();
-      console.log("hello", capabilities);
+      console.log('hello', capabilities);
 
       // @ts-ignore
-      const width = document.querySelector("#width")?.value || 0;
+      const width = document.querySelector('#width')?.value || 0;
       // @ts-ignore
-      const height = document.querySelector("#height")?.value || 0;
+      const height = document.querySelector('#height')?.value || 0;
 
       const videoConstraints = {
         width,
@@ -98,54 +103,29 @@ export default function App() {
     });
   };
 
-  const startRecording = () => {
-    if (!stream?.id) {
-      alert("please turn on your camera first");
+  const startRecordingHandler = (stream: MediaStream | null) => {
+    const { recorder, recordedBlobs } = startRecording(stream) || {};
 
-      return;
-    }
-
-    const recorder = new MediaRecorder(stream);
-
-    recorder.ondataavailable = (e) => {
-      console.log("data recived, ", e.data);
-
-      setRecordedBlobls([e.data]);
-    };
-    setMediaRecorder(recorder);
-    recorder.start();
+    if (recordedBlobs) setRecordedBlobs(recordedBlobs);
+    if (recorder) setMediaRecorder(recorder);
   };
 
-  const stopRecording = () => {
-    if (!mediaRecorder) {
-      alert("please start recording first");
-      return;
-    }
-    mediaRecorder.stop();
+  const stopRecordingHandler = () => {
+    stopRecording(mediaRecorder);
   };
 
-  const playRecord = () => {
-    const buffer = new Blob(recordedBlobls);
-    if (recordVideoRef.current)
-      recordVideoRef.current.src = window.URL.createObjectURL(buffer);
+  const playRecordHandler = (
+    node: RefObject<VideoHTMLAttributes<HTMLVideoElement>>
+  ) => {
+    const videoSrc = generateMediaPath(recordedBlobs);
+    if (node.current) node.current.src = videoSrc;
   };
 
-  const shareScreen = async () => {
-    let streamObject;
-    const options = {
-      video: true,
-      audio: false,
-      surfaceSwitching: "include",
-    };
-
+  const shareScreenHandler = async () => {
     if (screenStream?.id) return;
-    try {
-      streamObject = await navigator.mediaDevices.getDisplayMedia(options);
-      if (streamObject) {
-        setScreenStream(streamObject);
-      }
-    } catch (error) {
-      console.log(error);
+    const streamObject = await shareScreen();
+    if (streamObject) {
+      setScreenStream(streamObject);
     }
   };
 
@@ -160,6 +140,7 @@ export default function App() {
               className="video"
               autoPlay
               playsInline
+              // @ts-ignore
               ref={videoRef}
             ></video>
           </div>
@@ -171,6 +152,7 @@ export default function App() {
               className="video"
               playsInline
               controls
+              // @ts-ignore
               ref={recordVideoRef}
             ></video>
           </div>
@@ -197,18 +179,31 @@ export default function App() {
           </div>
 
           <div className="row py-4">
-            <button id="start-record" onClick={startRecording}>
+            <button
+              id="start-record"
+              onClick={() => startRecordingHandler(stream)}
+            >
               start recording
             </button>
-            <button id="stop-record" onClick={stopRecording}>
+
+            <button
+              id="start-record-screen"
+              onClick={() => startRecordingHandler(screenStream)}
+            >
+              start recording my screen
+            </button>
+            <button id="stop-record" onClick={stopRecordingHandler}>
               stop recording
             </button>
-            <button id="play-record" onClick={playRecord}>
+            <button
+              id="play-record"
+              onClick={() => playRecordHandler(recordVideoRef)}
+            >
               play record
             </button>
           </div>
 
-          <button id="share-screen" onClick={shareScreen}>
+          <button id="share-screen" onClick={shareScreenHandler}>
             share screen
           </button>
 
