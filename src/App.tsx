@@ -1,10 +1,18 @@
+import {
+  ChangeEvent,
+  RefObject,
+  useEffect,
+  useRef,
+  useState,
+  VideoHTMLAttributes,
+} from 'react';
 import './styles.css';
-import { useState, useRef, VideoHTMLAttributes, RefObject } from 'react';
 import {
   generateMediaPath,
+  getMedia,
+  shareScreen,
   startRecording,
   stopRecording,
-  shareScreen,
 } from './utils';
 
 type HTMLVideo = VideoHTMLAttributes<HTMLVideoElement> & {
@@ -19,6 +27,7 @@ export default function App() {
     null
   );
   const [recordedBlobs, setRecordedBlobs] = useState<Blob[]>([]);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
   const videoRef = useRef<HTMLVideo>(null);
   const recordVideoRef = useRef<HTMLVideo>(null);
@@ -26,7 +35,17 @@ export default function App() {
   const shareMedia = async () => {
     let streamObject;
     const constraints = {
-      audio: true,
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        googEchoCancellation: true,
+        googAutoGainControl: true,
+        googNoiseSuppression: true,
+        googHighpassFilter: true,
+        googTypingNoiseDetection: true,
+        googNoiseReduction: true,
+      },
       video: {
         width: { max: 720 },
         height: { min: 720 },
@@ -129,6 +148,68 @@ export default function App() {
     }
   };
 
+  const changeAudioInput = async (e: ChangeEvent<HTMLSelectElement>) => {
+    let streamObj;
+    //changed audio input!!!
+    const deviceId = e.target.value;
+    const newConstraints = {
+      audio: { deviceId: { exact: deviceId } },
+      video: true,
+    };
+    try {
+      streamObj = await navigator.mediaDevices.getUserMedia(newConstraints);
+      console.log(streamObj);
+      setStream(streamObj);
+      const tracks = streamObj.getAudioTracks();
+      console.log(tracks);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const changeAudioOutput = async (e: ChangeEvent<HTMLSelectElement>) => {
+    const deviceId = e.target.value;
+
+    if (videoRef.current) {
+      // @ts-ignore
+      videoRef.current.pause();
+      // @ts-ignore
+      await videoRef.current.setSinkId(deviceId);
+      // @ts-ignore
+
+      videoRef.current.play();
+    }
+
+    console.log('Changed audio device!');
+  };
+
+  const changeVideo = async (e: ChangeEvent<HTMLSelectElement>) => {
+    let streamObj;
+
+    //changed video input!!!
+    const deviceId = e.target.value;
+    const newConstraints = {
+      audio: true,
+      video: { deviceId: { exact: deviceId } },
+    };
+    try {
+      streamObj = await navigator.mediaDevices.getUserMedia(newConstraints);
+      const tracks = streamObj.getVideoTracks();
+      console.log(tracks);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  useEffect(() => {
+    const initiateDevices = async () => {
+      const devices = await getMedia();
+      setDevices(devices);
+    };
+
+    initiateDevices();
+  }, []);
+
   return (
     <div className="App">
       <div className="container">
@@ -207,7 +288,51 @@ export default function App() {
             share screen
           </button>
 
-          <button id="make-offer">make an offer</button>
+          <div className="row">
+            <label htmlFor="audio-input">choose input audio</label>
+            <select id="audio-input" onChange={e => changeAudioInput(e)}>
+              {devices
+                .filter(device => device.kind === 'audioinput')
+                .map(device => {
+                  return (
+                    <option key={device.deviceId} value={device.deviceId}>
+                      {device.label}
+                    </option>
+                  );
+                })}
+            </select>
+          </div>
+
+          <div className="row">
+            <label htmlFor="audio-output">choose output audio</label>
+            <select id="audio-output" onChange={changeAudioOutput}>
+              {devices
+                .filter(device => device.kind === 'audiooutput')
+                .map(device => {
+                  return (
+                    <option key={device.deviceId} value={device.deviceId}>
+                      {device.label}
+                    </option>
+                  );
+                })}
+            </select>
+          </div>
+
+          <div className="row">
+            <label htmlFor="video-input">choose input video</label>
+            <select id="video-input" onChange={e => changeVideo(e)}>
+              {devices
+                .filter(device => device.kind === 'videoinput')
+                .map(device => {
+                  return (
+                    <option key={device.deviceId} value={device.deviceId}>
+                      {device.label}
+                    </option>
+                  );
+                })}
+            </select>
+          </div>
+
           <button id="accept-offer">accept an offer</button>
         </div>
       </div>
